@@ -146,7 +146,7 @@
         //
         //     //////////////////////////    C     //////////////////////////     //
         "[c]": {
-            "editor.defaultFormatter": "chiehyu.vscode-astyle",
+            "editor.defaultFormatter": "ms-vscode.cpptools",
             "editor.formatOnPaste": false,
             "editor.formatOnSave": true,
             "editor.formatOnSaveMode": "file",
@@ -254,7 +254,7 @@
             "**/docs /*": true,
             "**/temp /*": true
         },
-        "C_Cpp.formatting": "disabled",
+        "C_Cpp.formatting": "default",
         "C_Cpp.inactiveRegionOpacity": 0.45,
         "C_Cpp.loggingLevel": "Warning",
         "C_Cpp.vcFormat.indent.gotoLabels": "leftmostColumn",
