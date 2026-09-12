@@ -1,0 +1,269 @@
+{
+    "folders": [
+        {
+            "name": "Project Files",
+            "path": "."
+        }
+    ],
+    "settings": {
+        //
+        // =========================================================================
+        // Microsoft Visual Studio Code
+        // =========================================================================
+        //
+        //     ////////////////////    Accessibility     ////////////////////     //
+        "accessibility.signals.terminalBell": {
+            "sound": "on"
+        },
+        //
+        //     ////////////////////////    Debug     ////////////////////////     //
+        "debug.inlineValues": "on",
+        "debug.openDebug": "openOnSessionStart",
+        //
+        //     ///////////////////////     Editor     ///////////////////////     //
+        "editor.cursorBlinking": "phase",
+        "editor.cursorSurroundingLines": 1,
+        "editor.cursorSurroundingLinesStyle": "all",
+        "editor.detectIndentation": false,
+        "editor.fontFamily": "Consolas",
+        "editor.fontSize": 20,
+        "editor.formatOnSave": true,
+        "editor.formatOnType": true,
+        "editor.minimap.renderCharacters": false,
+        "editor.minimap.showSlider": "always",
+        "editor.mouseWheelZoom": true,
+        "editor.multiCursorModifier": "ctrlCmd",
+        "editor.multiCursorLimit": 10000,
+        "editor.quickSuggestions": {
+            "comments": true,
+            "other": true,
+            "strings": false
+        },
+        "editor.renderLineHighlight": "all",
+        "editor.renderWhitespace": "all",
+        "editor.rulers": [
+            20,
+            40,
+            48,
+            56,
+            64,
+            72,
+            80
+        ],
+        "editor.scrollBeyondLastColumn": 5,
+        "editor.showFoldingControls": "always",
+        "editor.smoothScrolling": true,
+        "editor.snippetSuggestions": "top",
+        "editor.stickyScroll.enabled": false,
+        "editor.stickyTabStops": true,
+        "editor.suggestSelection": "recentlyUsed",
+        "editor.trimAutoWhitespace": false,
+        "editor.wrappingIndent": "deepIndent",
+        //
+        //     //////////////////////     Explorer     //////////////////////     //
+        "explorer.openEditors.visible": 9,
+        //
+        //     /////////////////////     Extensions     /////////////////////     //
+        "extensions.ignoreRecommendations": true,
+        //
+        //     ////////////////////////    Files     ////////////////////////     //
+        "files.eol": "auto",
+        "files.exclude": {
+            "_hide/": false,
+            ".mxproject": false,
+            ".vscode/": false,
+            "*.code-workspace": false,
+            "*.ioc": false,
+            "*.pdsprj": false,
+            "*.pdsprj*workspace": false,
+            "**/.DS_Store": true,
+            "**/.git": true,
+            "**/.hg": true,
+            "**/.svn": true,
+            "**/CVS": true,
+            "**/Thumbs.db": true,
+            "build/": false,
+            "startup_stm32f*.s": false,
+            "STM32F*_FLASH.ld": false
+        },
+        "files.insertFinalNewline": true,
+        "files.participants.timeout": 5000,
+        "files.trimFinalNewlines": true,
+        "files.trimTrailingWhitespace": true,
+        //
+        //     //////////////////////     Markdown     //////////////////////     //
+        "markdown.preview.fontSize": 20,
+        "markdown.preview.openMarkdownLinks": "inEditor",
+        "markdown.validate.enabled": true,
+        "markdown.math.enabled": true,
+        //
+        //     ///////////////////////     Remote     ///////////////////////     //
+        "remote.restoreForwardedPorts": false,
+        //
+        //     ///////////////////////     Search     ///////////////////////     //
+        "search.showLineNumbers": true,
+        //
+        //
+        //     //////////////////////     Terminal     //////////////////////     //
+        "terminal.integrated.cursorBlinking": true,
+        "terminal.integrated.cursorStyle": "line",
+        "terminal.integrated.enableVisualBell": true,
+        "terminal.integrated.fontFamily": "monospace",
+        "terminal.integrated.minimumContrastRatio": 1,
+        "terminal.integrated.rightClickBehavior": "copyPaste",
+        "terminal.integrated.scrollback": 10000,
+        "terminal.integrated.shellIntegration.enabled": false,
+        "terminal.integrated.stickyScroll.enabled": false,
+        //
+        //     //////////////////////     Timeline     //////////////////////     //
+        "timeline.pageOnScroll": true,
+        //
+        //     ///////////////////////     Window     ///////////////////////     //
+        "window.commandCenter": false,
+        "window.zoomLevel": 0,
+        //
+        //     //////////////////////    Workbench     //////////////////////     //
+        "workbench.colorTheme": "Dark+",
+        "workbench.editor.focusRecentEditorAfterClose": false,
+        "workbench.editor.highlightModifiedTabs": true,
+        "workbench.iconTheme": "vs-seti",
+        "workbench.list.horizontalScrolling": true,
+        "workbench.secondarySideBar.defaultVisibility": "hidden",
+        "workbench.settings.editor": "json",
+        "workbench.settings.openDefaultKeybindings": true,
+        "workbench.settings.openDefaultSettings": true,
+        "workbench.sideBar.location": "left",
+        "workbench.tree.indent": 16,
+        "workbench.tree.renderIndentGuides": "always",
+        "workbench.view.alwaysShowHeaderActions": true,
+        //
+        //     //////////////////////     Zen Mode     //////////////////////     //
+        "zenMode.restore": false,
+        //
+        // =========================================================================
+        // Language Specific
+        // =========================================================================
+        //
+        //     //////////////////////////    C     //////////////////////////     //
+        "[c]": {
+            "editor.defaultFormatter": "chiehyu.vscode-astyle",
+            "editor.formatOnPaste": false,
+            "editor.formatOnSave": true,
+            "editor.formatOnSaveMode": "file",
+            "editor.formatOnType": false,
+            "editor.semanticHighlighting.enabled": true,
+            "editor.suggest.insertMode": "insert",
+            "editor.wordBasedSuggestions": "off"
+        },
+        //
+        //     /////////////////////////    C++     /////////////////////////     //
+        "[cpp]": {
+            "editor.defaultFormatter": "ms-vscode.cpptools",
+            "editor.formatOnPaste": false,
+            "editor.formatOnSave": true,
+            "editor.formatOnSaveMode": "file",
+            "editor.formatOnType": false,
+            "editor.semanticHighlighting.enabled": true,
+            "editor.suggest.insertMode": "insert",
+            "editor.wordBasedSuggestions": "off"
+        },
+        //
+        //     ////////////////////////     JSON     ////////////////////////     //
+        "[json]": {
+            "editor.defaultFormatter": "vscode.json-language-features",
+            "editor.formatOnPaste": false,
+            "editor.formatOnSave": true,
+            "editor.formatOnSaveMode": "file",
+            "editor.formatOnType": false,
+            "editor.quickSuggestions": {
+                "strings": true
+            },
+            "editor.suggest.insertMode": "insert"
+        },
+        "[jsonc]": {
+            "editor.defaultFormatter": "vscode.json-language-features",
+            "editor.formatOnPaste": false,
+            "editor.formatOnSave": true,
+            "editor.formatOnSaveMode": "file",
+            "editor.formatOnType": false,
+            "editor.quickSuggestions": {
+                "strings": true
+            },
+            "editor.suggest.insertMode": "insert"
+        },
+        //
+        //     //////////////////////     Makefile     //////////////////////     //
+        "[makefile]": {
+            "editor.insertSpaces": false
+        },
+        //
+        //     //////////////////////     Markdown     //////////////////////     //
+        "[markdown]": {
+            "editor.defaultFormatter": "yzhang.markdown-all-in-one",
+            "editor.unicodeHighlight.ambiguousCharacters": false,
+            "editor.unicodeHighlight.invisibleCharacters": false,
+            "editor.insertSpaces": false,
+            "editor.tabSize": 4,
+            "editor.wordWrap": "on",
+            "editor.quickSuggestions": {
+                "other": "on",
+                "comments": "off",
+                "strings": "off"
+            }
+        },
+        "[markdown-math]": {},
+        "[markdown_latex_combined]": {},
+        //
+        //     /////////////////////     Plain Text     /////////////////////     //
+        "[plaintext]": {
+            "editor.unicodeHighlight.ambiguousCharacters": false,
+            "editor.unicodeHighlight.invisibleCharacters": false
+        },
+        //
+        // =========================================================================
+        // Extensions
+        // =========================================================================
+        //
+        //     //////////////////     AStyle formatter     //////////////////     //
+        "astyle.astylerc": "${workspaceFolder}/.astylerc",
+        "astyle.executable": "astyle",
+        "astyle.cpp.enable": true,
+        "astyle.c.enable": true,
+        //
+        //     /////////////////////     C/C++ Tools    /////////////////////     //
+        "C_Cpp.autoAddFileAssociations": false,
+        "C_Cpp.autocompleteAddParentheses": true,
+        "C_Cpp.codeAnalysis.exclude": {
+            "**/_docs /*": true,
+            "**/_hide /*": true,
+            "**/_temp /*": true,
+            "**/docs /*": true,
+            "**/temp /*": true
+        },
+        "C_Cpp.codeFolding": "enabled",
+        "C_Cpp.commentContinuationPatterns": [
+            "/**"
+        ],
+        "C_Cpp.configurationWarnings": "enabled",
+        "C_Cpp.default.cppStandard": "c++17",
+        "C_Cpp.default.cStandard": "c17",
+        "C_Cpp.files.exclude": {
+            "**/_docs /*": true,
+            "**/_hide /*": true,
+            "**/_temp /*": true,
+            "**/docs /*": true,
+            "**/temp /*": true
+        },
+        "C_Cpp.formatting": "disabled",
+        "C_Cpp.inactiveRegionOpacity": 0.45,
+        "C_Cpp.loggingLevel": "Warning",
+        "C_Cpp.vcFormat.indent.gotoLabels": "leftmostColumn",
+        "C_Cpp.vcFormat.indent.preserveComments": true,
+        //     ///////////////     markdownMinimapHeaders     ///////////////     //
+        "editor.largeFileOptimizations": false
+    },
+    "launch": {
+        "version": "0.2.0",
+        "configurations": []
+    }
+}
