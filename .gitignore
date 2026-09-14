@@ -1,8 +1,3 @@
-build/
-datasheets/
-exercicios/
-Project Backups/
-slides aula/
 *.pdf
 *.bin
 *.elf
@@ -11,3 +6,4 @@ slides aula/
 *.d
 *.lst
 *.o
+*.pdsprj.*

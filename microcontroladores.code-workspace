@@ -126,7 +126,7 @@
         "workbench.colorTheme": "Dark+",
         "workbench.editor.focusRecentEditorAfterClose": false,
         "workbench.editor.highlightModifiedTabs": true,
-        "workbench.iconTheme": "vs-seti",
+        "workbench.iconTheme": "material-icon-theme",
         "workbench.list.horizontalScrolling": true,
         "workbench.secondarySideBar.defaultVisibility": "hidden",
         "workbench.settings.editor": "json",
