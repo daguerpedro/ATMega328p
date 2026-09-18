@@ -1,8 +1,4 @@
----
-
----
---- 
-A ABI (Application Binary Interface) para o compilador AVR-GCC define as regras de como as funções utilizam os 32 registradores de uso geral (R0 a R31) do microcontrolador AVR.
+A ABI (Application Binary Interface) para o compilador AVR-GCC define as regras de como as funções utilizam os 32 registradores de uso geral (R0 a R31) do microcontrolador AVR.  
 
 | Registrador  | Nome/Função          | Observação                      |
 | ------------ | -------------------- | ------------------------------- |
