@@ -1,0 +1,5 @@
+anotações/* linguist-detectable=false
+*.inc linguist-detectable=false
+*.md linguist-detectable=false
+*.mk linguist-detectable=false
+*.conf linguist-detectable=false
