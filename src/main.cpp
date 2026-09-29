@@ -1,43 +1,64 @@
 #define F_CPU 16000000UL
 
-#include <avr/io.h>
-#include <util/delay.h>
-#include <util/atomic.h>
-#include <avr/interrupt.h>
+#include "funsape/globalDefines.hpp"
+#include "funsape/peripheral/gpioBus.hpp"
+#include "funsape/peripheral/gpioPin.hpp"
+#include "funsape/peripheral/timer0.hpp"
+#include "funsape/peripheral/pcint0.hpp"
+#include "funsape/device/sevenSegmentsMuxDisplay.hpp"
 
-#include "defs.h"
-#include "animation.h"
+#include "counter.hpp"
 
-volatile uint8_t estadoPINB;
+Counter counter(2048);
+GpioBus buttons;
+
+volatile uint8_t buttonsState;
+
 int main()
 {
-    // Configurações
-    DDRD = 255; // TODOS PINOS D COMO SAÍDA
-    setBit(PORTB, 0);
-    setBit(PORTB, 1);
+    counter.init(&PIND, PinIndex::P0, &PORTC, PinIndex::P0);
 
-    sei();               // Ativa Interrupções
-    PCICR = 0b00000001;  // Ativa Interrupções para o grupo PB
-    PCMSK0 = 0b00000011; // Seleciona Apenas PB0(PCINT0) e PB1(PCINT1)
+    //Modo CTC para reiniciar o timer quando chegar em OCRA;
+    timer0.init(Timer0::Mode::CTC_OCRA, Timer0::ClockSource::PRESCALER_1024);
+    timer0.activateCompareAInterrupt();
+    timer0.setCompareAValue(77); //Calcule usando Fcpu, Fprescaler, Max | CompAval
 
-    estadoPINB = PINB;
+    buttons.init(&PINB, PinIndex::P0, 4);
+    buttons.setMode(PinMode::INPUT_PULLED_UP);
 
-    while (true)
+    pcint0.activateInterrupt();
+    pcint0.init(Pcint0::Pin::PIN_PCINT0 | Pcint0::Pin::PIN_PCINT1 | Pcint0::Pin::PIN_PCINT2 | Pcint0::Pin::PIN_PCINT3);
+
+    buttonsState = buttons.read(); //Salva o estado inicial dos botões
+    
+    sei();
+
+    while (1)
     {
-        animate();
-        _delay_ms(250);
     }
 }
 
-ISR(PCINT0_vect)
+void timer0CompareACallback()
 {
-    uint8_t novoEstado = PINB;
-    uint8_t diff = estadoPINB ^ novoEstado;
-    estadoPINB = novoEstado;
+    counter.display();
+};
 
-    if (isBitSet(diff, 0) && isBitClear(novoEstado, 0))
-        toggleAnimDir();
+void pcint0InterruptCallback()
+{
+    uint8_t newButtonsState = buttons.read();
+    auto diff = buttonsState ^ newButtonsState; //Mudança dos estados de botões
 
-    if (isBitSet(diff, 1) && isBitClear(novoEstado, 1))
-        toggleAnimFreeze();
-}
+    if (isBitSet(diff, 0) && isBitClr(newButtonsState, 0)) //Garante apenas o botão 0 quando desce;
+        counter.increment(1);
+
+    if (isBitSet(diff, 1) && isBitClr(newButtonsState, 1)) //Garante apenas o botão 1 quando desce;
+        counter.increment(10);
+
+    if (isBitSet(diff, 2) && isBitClr(newButtonsState, 2)) //Garante apenas o botão 2 quando desce;
+        counter.increment(100);
+
+    if (isBitSet(diff, 3) && isBitClr(newButtonsState, 3)) //Garante apenas o botão 3 quando desce;
+        counter.increment(1000);
+
+    buttonsState = newButtonsState;
+};
