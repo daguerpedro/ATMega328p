@@ -1,64 +1,79 @@
 #define F_CPU 16000000UL
 
 #include "funsape/globalDefines.hpp"
+#include "funsape/peripheral/adc.hpp"
+#include "funsape/peripheral/timer0.hpp"
 #include "funsape/peripheral/gpioBus.hpp"
 #include "funsape/peripheral/gpioPin.hpp"
-#include "funsape/peripheral/timer0.hpp"
-#include "funsape/peripheral/pcint0.hpp"
-#include "funsape/device/sevenSegmentsMuxDisplay.hpp"
+#include "funsape/device/hd44780.hpp"
 
-#include "counter.hpp"
-
-Counter counter(2048);
-GpioBus buttons;
-
-volatile uint8_t buttonsState;
+Hd44780 display;
 
 int main()
 {
-    counter.init(&PIND, PinIndex::P0, &PORTC, PinIndex::P0);
+    GpioBus bData;
+    GpioPin pCtrlE;
+    GpioPin pCtrlRs;
 
-    //Modo CTC para reiniciar o timer quando chegar em OCRA;
-    timer0.init(Timer0::Mode::CTC_OCRA, Timer0::ClockSource::PRESCALER_1024);
-    timer0.activateCompareAInterrupt();
-    timer0.setCompareAValue(77); //Calcule usando Fcpu, Fprescaler, Max | CompAval
-
-    buttons.init(&PINB, PinIndex::P0, 4);
-    buttons.setMode(PinMode::INPUT_PULLED_UP);
-
-    pcint0.activateInterrupt();
-    pcint0.init(Pcint0::Pin::PIN_PCINT0 | Pcint0::Pin::PIN_PCINT1 | Pcint0::Pin::PIN_PCINT2 | Pcint0::Pin::PIN_PCINT3);
-
-    buttonsState = buttons.read(); //Salva o estado inicial dos botões
+    pCtrlE.init(&PIND,  PinIndex::P2);
+    pCtrlRs.init(&PIND, PinIndex::P3);
+    bData.init(&PIND, PinIndex::P4, 4);
+    display.setControlPort(&pCtrlE, &pCtrlRs);
+    display.setDataPort(&bData);
+    display.init(Hd44780::Size::LCD_16X2);
     
+    display.stdio();
+    printf("Iniciando");
+
+    timer0.activateOverflowInterrupt();
+    timer0.init(Timer0::Mode::NORMAL, Timer0::ClockSource::PRESCALER_1024);
+    
+    adc.setChannel(Adc::Channel::CHANNEL_0);
+    adc.init(Adc::Mode::AUTO_TIMER0_OVERFLOW, Adc::Reference::INTERNAL, Adc::Prescaler::PRESCALER_128);
+    adc.activateInterrupt();
+    adc.enable();
+    
+    adc.startConversion(); //discard
+    adc.waitUntilConversionFinish();
+
     sei();
+
+    display.clearScreen();
 
     while (1)
     {
+
     }
 }
 
-void timer0CompareACallback()
+void adcConversionCompleteCallback()
 {
-    counter.display();
-};
+    timer0.clearOverflowInterruptRequest();
 
-void pcint0InterruptCallback()
-{
-    uint8_t newButtonsState = buttons.read();
-    auto diff = buttonsState ^ newButtonsState; //Mudança dos estados de botões
+    uint16_t raw = adc.getValue();
+    if(raw < 1) raw = 1;
 
-    if (isBitSet(diff, 0) && isBitClr(newButtonsState, 0)) //Garante apenas o botão 0 quando desce;
-        counter.increment(1);
+    uint32_t temp = raw-1;
+    temp *= (1100/4);
+    temp /= (1024/4);
 
-    if (isBitSet(diff, 1) && isBitClr(newButtonsState, 1)) //Garante apenas o botão 1 quando desce;
-        counter.increment(10);
+    display.cursorGoTo(0,0);
 
-    if (isBitSet(diff, 2) && isBitClr(newButtonsState, 2)) //Garante apenas o botão 2 quando desce;
-        counter.increment(100);
+    printf("Temp: %lu.%1lu", temp/10, temp%10);
+}
 
-    if (isBitSet(diff, 3) && isBitClr(newButtonsState, 3)) //Garante apenas o botão 3 quando desce;
-        counter.increment(1000);
+/*
+    f/(f+s) = v
+    f/v = (f+s)
+    f(1/v - 1) = s
+    
+    v   = vin/vcc
+    1/v = vcc/vin
 
-    buttonsState = newButtonsState;
-};
+    f(vcc/vin - 1) = s
+
+    f = Rf
+    s = Rs
+
+    Rs = Rf(vcc/vin - 1)
+*/
