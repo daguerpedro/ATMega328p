@@ -28,6 +28,7 @@ enum TWI_STATUS : uint8_t
     DATA_RECEIVED_NACK = 0x58
 };*/
 
+/// @brief Implementação do protocolo TWI para o ATMega328p
 class TWI
 {
 public:

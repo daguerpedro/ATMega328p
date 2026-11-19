@@ -8,6 +8,7 @@
 #include "font.h"
 #include <stdlib.h>
 
+/// @brief Driver para display OLED controlador SSD1306, Implementação com paginação
 class SSD1306
 {
 public:
