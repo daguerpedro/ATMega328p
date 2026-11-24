@@ -34,3 +34,7 @@ ambientais.
     - Desenvolvimento de PCB personalizada.
     - Comunicação sem fio via Bluetooth ou Wi-Fi.
     - Desenvolvimento de gabinete personalizado.
+  
+### 3. Diagrama
+
+![diagrama](./docs/diagrama.png)
