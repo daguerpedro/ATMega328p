@@ -2,8 +2,8 @@
 
 #include "funsape/globalDefines.hpp"
 #include "funsape/peripheral/timer1.hpp"
-#include "funsape/peripheral/timer0.hpp"
 #include "funsape/peripheral/gpioPin.hpp"
+#include "funsape/peripheral/pcint0.hpp"
 
 #include <ssd1306.h>
 #include <ssd1306_fonts.h>
@@ -13,35 +13,22 @@
 #include "drivers/encoder.hpp"
 
 volatile bool fRequestSample = false;
-volatile bool fUpdateEncoder = false;
 
-GpioPin s1;
-GpioPin s2;
-GpioPin key;
-Encoder encoder(s1, s2, key, 100);
-
-void timer0CompareACallback()
-{
-    fUpdateEncoder = true;
-}
+Encoder encoder;
 
 void timer1CompareACallback()
 {
     fRequestSample = true;
 }
 
+void pcint0InterruptCallback()
+{
+    encoder.update();
+}
+
 int main()
 {
-
-    s1.init(&PORTB, PinIndex::P0);
-    s2.init(&PORTB, PinIndex::P1);
-    key.init(&PORTB, PinIndex::P2);
-
-    s1.setMode(PinMode::INPUT_PULLED_UP);
-    s2.setMode(PinMode::INPUT_PULLED_UP);
-    key.setMode(PinMode::INPUT_PULLED_UP);
-
-    encoder.init();
+    encoder.init(&PORTB, PinIndex::P0, PinIndex::P1, PinIndex::P2, true);
 
     DHT11 dht;
     dht.init(PORTC, DDRC, PINC, 3);
@@ -55,13 +42,12 @@ int main()
     DHT11::Data data;
     char buffer[128];
 
-    timer0.init(Timer0::Mode::CTC_OCRA, Timer0::ClockSource::PRESCALER_64);
-    timer0.setCompareAValue(249); // 1 ms
-    timer0.activateCompareAInterrupt();
-
     timer1.init(Timer1::Mode::CTC_OCRA, Timer1::ClockSource::PRESCALER_1024);
     timer1.setCompareAValue(31249); // 2 Sec
     timer1.activateCompareAInterrupt();
+
+    pcint0.init(Pcint0::Pin::PIN_PCINT0 | Pcint0::Pin::PIN_PCINT1 | Pcint0::Pin::PIN_PCINT2);
+    pcint0.activateInterrupt();
 
     sei();
 
@@ -71,20 +57,11 @@ int main()
     while (1)
     {
         bool sample;
-        bool updateEnc;
 
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
             sample = fRequestSample;
-            updateEnc = fUpdateEncoder;
-
-            fUpdateEncoder = false;
             fRequestSample = false;
-        }
-
-        if (updateEnc)
-        {
-            encoder.update();
         }
 
         if (sample)
@@ -116,12 +93,12 @@ int main()
         if (index > 2)
             index = 0;
 
-        if(index != curIndex)
+        if (index != curIndex)
         {
             ssd1306_clearBlock(0, 0, 128, 8);
             curIndex = index;
         }
-        
+
         switch (index)
         {
         case 0:

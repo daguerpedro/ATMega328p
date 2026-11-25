@@ -34,20 +34,22 @@ public:
         bool key = false;
     };
 
-    Encoder(const GpioPin &s1, const GpioPin &s2, const GpioPin &key, uint16_t debounce = 50) : m_s1(s1),
-                                                                                                m_s2(s2),
-                                                                                                m_key(key),
-                                                                                                m_debounce(debounce ? debounce : 1)
-    {
-    }
-
+    Encoder() = default;
     Encoder(const Encoder &) = delete;
     Encoder &operator=(const Encoder &) = delete;
 
-    void init()
+    void init(ioRegAddress_t gpiPortAddr, const PinIndex S1PinIndex, const PinIndex S2PinIndex, const PinIndex KeyPinIndex, bool pullUp = true)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
+            m_s1.init(gpiPortAddr, S1PinIndex);
+            m_s2.init(gpiPortAddr, S2PinIndex);
+            m_key.init(gpiPortAddr, KeyPinIndex);
+
+            m_s1.setMode(pullUp ? PinMode::INPUT_PULLED_UP : PinMode::INPUT_FLOATING);
+            m_s2.setMode(pullUp ? PinMode::INPUT_PULLED_UP : PinMode::INPUT_FLOATING);
+            m_key.setMode(pullUp ? PinMode::INPUT_PULLED_UP : PinMode::INPUT_FLOATING);
+
             m_inputAct.keyAction = KeyEvent::NONE;
             m_inputAct.rotAction = RotEvent::NONE;
 
@@ -55,7 +57,6 @@ public:
             m_prevInputState.s2 = m_s2.read();
             m_prevInputState.key = !m_key.read();
 
-            m_debounceCounter = 0;
             m_ready = true;
         }
     }
@@ -78,19 +79,10 @@ public:
         m_prevInputState.s1 = inputState.s1;
         m_prevInputState.s2 = inputState.s2;
 
-        if (inputState.key == m_prevInputState.key) // Debounce
+        if (inputState.key != m_prevInputState.key) // Debounce
         {
-            m_debounceCounter = 0;
-        }
-        else
-        {
-            if (++m_debounceCounter >= m_debounce)
-            {
-                m_prevInputState.key = inputState.key;
-                m_debounceCounter = 0;
-
-                m_inputAct.keyAction = inputState.key ? KeyEvent::PRESS : KeyEvent::RELEASE;
-            }
+            m_prevInputState.key = inputState.key;
+            m_inputAct.keyAction = inputState.key ? KeyEvent::PRESS : KeyEvent::RELEASE;
         }
     }
 
@@ -125,16 +117,12 @@ public:
     }
 
 private:
-    const GpioPin &m_s1;
-    const GpioPin &m_s2;
-    const GpioPin &m_key;
-
-    const uint16_t m_debounce;
+    GpioPin m_s1;
+    GpioPin m_s2;
+    GpioPin m_key;
 
     volatile InputState m_prevInputState;
     volatile InputAction m_inputAct;
-
-    uint16_t m_debounceCounter = 0;
 
     volatile bool m_ready = false;
 };
