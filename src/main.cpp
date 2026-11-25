@@ -66,7 +66,7 @@ int main()
 
     /*rtc.setData(
         2026, 11, 24, // Year, month, day
-        23, 22, 0     // Hours, minutes, seconds
+        23, 25, 0     // Hours, minutes, seconds
     );*/
 
     rtc.clockStart();
