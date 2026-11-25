@@ -11,10 +11,12 @@
 
 #include "drivers/dht11.hpp"
 #include "drivers/encoder.hpp"
+#include "drivers/ds1302.hpp"
 
 volatile bool fRequestSample = false;
 
 Encoder encoder;
+Ds1302 rtc;
 
 void timer1CompareACallback()
 {
@@ -48,6 +50,26 @@ int main()
 
     pcint0.init(Pcint0::Pin::PIN_PCINT0 | Pcint0::Pin::PIN_PCINT1 | Pcint0::Pin::PIN_PCINT2);
     pcint0.activateInterrupt();
+
+    if (!rtc.init(PORTD, DDRD, PIND, PD5, PD6, PD7))
+    {
+        char buffer[32];
+
+        snprintf(buffer, sizeof(buffer), "RTC STAGE: %u", (unsigned)rtc.diagnosticStage);
+
+        ssd1306_printFixed(0, 20, buffer, STYLE_NORMAL);
+
+        snprintf(buffer, sizeof(buffer), "RTC VALUE: 0x%02X", (unsigned)rtc.diagnosticValue);
+
+        ssd1306_printFixed(0, 32, buffer, STYLE_NORMAL);
+    }
+
+    /*rtc.setData(
+        2026, 11, 24, // Year, month, day
+        23, 22, 0     // Hours, minutes, seconds
+    );*/
+
+    rtc.clockStart();
 
     sei();
 
@@ -108,7 +130,13 @@ int main()
             snprintf(buffer, sizeof(buffer), "Hum: %u.%u %%", data.humidity, data.humidityDecimal);
             break;
         case 2:
-            snprintf(buffer, sizeof(buffer), "Teste");
+            uint8_t hours;
+            uint8_t minutes;
+            uint8_t seconds;
+
+            if (rtc.getTime(&hours, &minutes, &seconds))
+                snprintf(buffer, sizeof(buffer), "%02u:%02u:%02u", hours, minutes, seconds);
+
             break;
 
         default:
