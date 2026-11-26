@@ -20,7 +20,8 @@ COMPILER_PATH							?=
 COMPILER_STD_C							?= c11
 COMPILER_STD_CPP						?= c++17
 EXCLUDE_DIRS							?= _hide/ doc/ Release/ temp/ anotações/
-LIBRARY_PATH							?=
+EXCLUDE_DIRS += lib/
+LIBRARY_PATH							?= lib/
 MCU_DEVICE_NAME							?= atmega328p
 PROGRAMMER_CONFIG_FILE					?= avrdude.conf
 PROGRAMMER_TYPE							?= arduino
@@ -32,6 +33,10 @@ USER_FLAGS_C							?= -Wno-switch
 USER_FLAGS_CPP							?= -Wno-switch
 USER_LIBS								?=
 include port.mk
+SSD1306_DIR := lib/ssd1306
+
+USER_LIBS += ssd1306
+LIBRARY_PATH += -L$(SSD1306_DIR)/bld
 
 # ==============================================================================
 # Function definitions
@@ -107,6 +112,7 @@ INCLUDES_ASM		:= $(addprefix -I, $(HEADERS_ASM))
 INCLUDES_H			:= $(addprefix -I, $(HEADERS_H))
 INCLUDES_HPP		:= $(addprefix -I, $(HEADERS_HPP))
 INCLUDES_HXX		:= $(sort $(INCLUDES_HPP) $(INCLUDES_H))
+INCLUDES_HXX 		+= -I$(SSD1306_DIR)/src
 INCLUDES_ALL		:= $(sort $(INCLUDES_ASM) $(INCLUDES_HXX))
 
 ifneq ($(USER_DEFINES_ASM),)
