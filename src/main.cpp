@@ -13,5 +13,5 @@ int main()
 
     sei();
 
-    sys.drawScreen();
+    sys.run();
 }

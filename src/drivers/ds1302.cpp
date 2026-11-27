@@ -55,7 +55,7 @@ Ds1302::Ds1302(void)
     this->_clearData();
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return;
 }
 
@@ -82,7 +82,7 @@ bool_t Ds1302::clockStart(void)
     }
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -96,14 +96,19 @@ bool_t Ds1302::clockStop(void)
     }
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
 Ds1302::Error Ds1302::getLastError(void)
 {
     // Returns last error
-    return this->_lastError;
+    return this->_lastError.code;
+}
+
+Ds1302::ErrorInfo Ds1302::getLastErrorInfo() const
+{
+    return _lastError;
 }
 
 const char* Ds1302::ErrorString(Error err)
@@ -124,40 +129,43 @@ const char* Ds1302::ErrorString(Error err)
     return "Erro Desconhecido";
 }
 
-bool_t Ds1302::init(volatile uint8_t &port_p, volatile uint8_t &ddr_p,
-        volatile uint8_t &pin_p, uint8_t ce_p, uint8_t clk_p, uint8_t io_p)
+bool_t Ds1302::init(ioRegAddress_t port_p, PinIndex ce_p, PinIndex clk_p, PinIndex io_p)
 {
     _clearData();
-    diagnosticStage = 0;
-    diagnosticValue = 0;
-    if (ce_p > 7 || clk_p > 7 || io_p > 7 || ce_p == clk_p || ce_p == io_p || clk_p == io_p) {
-        _lastError = Error::ARGUMENT_VALUE_INVALID;
+    if (static_cast<uint8_t>(ce_p) >= 8 || static_cast<uint8_t>(clk_p) >= 8 ||
+            static_cast<uint8_t>(io_p) >= 8 || ce_p == clk_p || ce_p == io_p || clk_p == io_p ||
+            !_ce.init(port_p, ce_p) || !_clk.init(port_p, clk_p) || !_io.init(port_p, io_p)) {
+        _lastError = {Error::ARGUMENT_VALUE_INVALID, DiagnosticStage::NONE, 0};
         return false;
     }
-    _port = &port_p; _ddr = &ddr_p; _pin = &pin_p;
-    _ce = 1U << ce_p; _clk = 1U << clk_p; _io = 1U << io_p;
-    *_port &= ~(_ce | _clk | _io);
-    *_ddr = (*_ddr & ~_io) | _ce | _clk;
+    _ce.low();
+    _clk.low();
+    _ce.setMode(PinMode::OUTPUT_PUSH_PULL);
+    _clk.setMode(PinMode::OUTPUT_PUSH_PULL);
+    _io.setMode(PinMode::INPUT_FLOATING);
     _delay_ms(10);
     uint8_t wp, seconds;
     _read(0x8E, &wp, 1);
-    diagnosticStage = 1; diagnosticValue = wp;
-    if (wp & 0x7F) { _lastError = Error::COMMUNICATION_FAILED; return false; }
+    if (wp & 0x7F) {
+        _lastError = {Error::COMMUNICATION_FAILED, DiagnosticStage::INITIAL_CONTROL_READ, wp};
+        return false;
+    }
     // Verify both logic states of WP; a disconnected I/O may read all zeros.
     uint8_t test = 0x80, check;
     _write(0x8E, &test, 1);
     _read(0x8E, &check, 1);
-    diagnosticStage = 2; diagnosticValue = check;
     _write(0x8E, &wp, 1);
-    if (check != 0x80) { _lastError = Error::COMMUNICATION_FAILED; return false; }
+    if (check != 0x80) {
+        _lastError = {Error::COMMUNICATION_FAILED, DiagnosticStage::WRITE_PROTECTION_TEST, check};
+        return false;
+    }
     // Disable trickle charging, including when a previous firmware enabled it.
     uint8_t zero = 0;
     if (!_writeChecked(0x90, &zero, 1)) return false;
     _read(0x80, &seconds, 1);
     _countingHalted = (seconds & 0x80) != 0;
-    diagnosticStage = 0; diagnosticValue = 0;
     _initialized = true;
-    _lastError = Error::NONE;
+    _lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -178,7 +186,7 @@ bool_t Ds1302::getDate(uint16_t *year_p, uint8_t *month_p, uint8_t *monthDay_p, 
     // CHECK FOR ERROR - invalid pointers
     if((!isPointerValid(year_p)) || (!isPointerValid(month_p)) || (!isPointerValid(monthDay_p))) {
         // Returns error
-        this->_lastError = Error::ARGUMENT_POINTER_NULL;
+        this->_lastError = {Error::ARGUMENT_POINTER_NULL, DiagnosticStage::NONE, 0};
         return false;
     }
 
@@ -194,7 +202,7 @@ bool_t Ds1302::getDate(uint16_t *year_p, uint8_t *month_p, uint8_t *monthDay_p, 
     }
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -220,7 +228,7 @@ bool_t Ds1302::setDate(uint16_t year_p, uint8_t month_p, uint8_t monthDay_p)
     if (!_writeChecked(0x86, auxBuffer, 4)) return false;
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -242,12 +250,12 @@ bool_t Ds1302::getTime(uint8_t *hours_p, uint8_t *minutes_p, uint8_t *seconds_p,
     // CHECK FOR ERROR - invalid pointers
     if((!isPointerValid(hours_p)) || (!isPointerValid(minutes_p)) || (!isPointerValid(seconds_p))) {
         // Returns error
-        this->_lastError = Error::ARGUMENT_POINTER_NULL;
+        this->_lastError = {Error::ARGUMENT_POINTER_NULL, DiagnosticStage::NONE, 0};
         return false;
     }
     if((timeFormat_p == TimeFormat::FORMAT_12_HOURS) && (!isPointerValid(amPmFlag_p))) {
         // Returns error
-        this->_lastError = Error::ARGUMENT_POINTER_NULL;
+        this->_lastError = {Error::ARGUMENT_POINTER_NULL, DiagnosticStage::NONE, 0};
         return false;
     }
 
@@ -266,7 +274,7 @@ bool_t Ds1302::getTime(uint8_t *hours_p, uint8_t *minutes_p, uint8_t *seconds_p,
     }
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -296,7 +304,7 @@ bool_t Ds1302::setTime(uint8_t hours_p, uint8_t minutes_p, uint8_t seconds_p, Ti
     if (!_writeChecked(0x80, auxBuffer, 3)) return false;
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -328,12 +336,12 @@ bool_t Ds1302::getData(uint16_t *year_p, uint8_t *month_p, uint8_t *monthDay_p, 
     if((!isPointerValid(year_p)) || (!isPointerValid(month_p)) || (!isPointerValid(monthDay_p)) ||
             (!isPointerValid(hours_p)) || (!isPointerValid(minutes_p)) || (!isPointerValid(seconds_p))) {
         // Returns error
-        this->_lastError = Error::ARGUMENT_POINTER_NULL;
+        this->_lastError = {Error::ARGUMENT_POINTER_NULL, DiagnosticStage::NONE, 0};
         return false;
     }
     if((timeFormat_p == TimeFormat::FORMAT_12_HOURS) && (!isPointerValid(amPmFlag_p))) {
         // Returns error
-        this->_lastError = Error::ARGUMENT_POINTER_NULL;
+        this->_lastError = {Error::ARGUMENT_POINTER_NULL, DiagnosticStage::NONE, 0};
         return false;
     }
 
@@ -371,7 +379,7 @@ bool_t Ds1302::getData(uint16_t *year_p, uint8_t *month_p, uint8_t *monthDay_p, 
     }
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -405,7 +413,7 @@ bool_t Ds1302::setData(uint16_t year_p, uint8_t month_p, uint8_t monthDay_p,
     if (!_writeChecked(0xBE, auxBuffer, 7)) return false;
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -423,30 +431,30 @@ bool_t Ds1302::getRamData(uint8_t position_p, uint8_t *buffer_p, uint8_t size_p)
     // CHECK FOR ERROR - invalid pointer
     if(!isPointerValid(buffer_p)) {
         // Returns error
-        this->_lastError = Error::ARGUMENT_POINTER_NULL;
+        this->_lastError = {Error::ARGUMENT_POINTER_NULL, DiagnosticStage::NONE, 0};
         return false;
     }
     // CHECK FOR ERROR - wrong number of bytes to receive
     if(size_p == 0) {
         // Returns error
-        this->_lastError = Error::ARGUMENT_CANNOT_BE_ZERO;
+        this->_lastError = {Error::ARGUMENT_CANNOT_BE_ZERO, DiagnosticStage::NONE, 0};
         return false;
     }
     if(size_p > constDs1302RamSize) {
         // Returns error
-        this->_lastError = Error::BUFFER_SIZE_TOO_LARGE;
+        this->_lastError = {Error::BUFFER_SIZE_TOO_LARGE, DiagnosticStage::NONE, 0};
         return false;
     }
     // CHECK FOR ERROR - position invalid
     if(position_p > (constDs1302RamSize - 1)) {
         // Returns error
-        this->_lastError = Error::ARGUMENT_VALUE_INVALID;
+        this->_lastError = {Error::ARGUMENT_VALUE_INVALID, DiagnosticStage::NONE, 0};
         return false;
     }
     // CHECK FOR ERROR - memory overlap
     if((position_p + size_p) > constDs1302RamSize) {
         // Returns error
-        this->_lastError = Error::BUFFER_SIZE_TOO_LARGE;
+        this->_lastError = {Error::BUFFER_SIZE_TOO_LARGE, DiagnosticStage::NONE, 0};
         return false;
     }
 
@@ -454,7 +462,7 @@ bool_t Ds1302::getRamData(uint8_t position_p, uint8_t *buffer_p, uint8_t size_p)
     for (uint8_t i = 0; i < size_p; ++i) _read(0xC0 + 2 * (position_p + i), buffer_p + i, 1);
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -470,30 +478,30 @@ bool_t Ds1302::setRamData(uint8_t position_p, uint8_t *buffer_p, uint8_t size_p)
     // CHECK FOR ERROR - invalid pointer
     if(!isPointerValid(buffer_p)) {
         // Returns error
-        this->_lastError = Error::ARGUMENT_POINTER_NULL;
+        this->_lastError = {Error::ARGUMENT_POINTER_NULL, DiagnosticStage::NONE, 0};
         return false;
     }
     // CHECK FOR ERROR - wrong number of bytes to receive
     if(size_p == 0) {
         // Returns error
-        this->_lastError = Error::ARGUMENT_CANNOT_BE_ZERO;
+        this->_lastError = {Error::ARGUMENT_CANNOT_BE_ZERO, DiagnosticStage::NONE, 0};
         return false;
     }
     if(size_p > constDs1302RamSize) {
         // Returns error
-        this->_lastError = Error::BUFFER_SIZE_TOO_LARGE;
+        this->_lastError = {Error::BUFFER_SIZE_TOO_LARGE, DiagnosticStage::NONE, 0};
         return false;
     }
     // CHECK FOR ERROR - position invalid
     if(position_p > (constDs1302RamSize - 1)) {
         // Returns error
-        this->_lastError = Error::ARGUMENT_VALUE_INVALID;
+        this->_lastError = {Error::ARGUMENT_VALUE_INVALID, DiagnosticStage::NONE, 0};
         return false;
     }
     // CHECK FOR ERROR - memory overlap
     if((position_p + size_p) > constDs1302RamSize) {
         // Returns error
-        this->_lastError = Error::BUFFER_SIZE_TOO_LARGE;
+        this->_lastError = {Error::BUFFER_SIZE_TOO_LARGE, DiagnosticStage::NONE, 0};
         return false;
     }
 
@@ -501,7 +509,7 @@ bool_t Ds1302::setRamData(uint8_t position_p, uint8_t *buffer_p, uint8_t size_p)
     if (!_writeChecked(0xC0 + 2 * position_p, buffer_p, size_p)) return false;
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -513,14 +521,12 @@ void Ds1302::_clearData(void)
 {
 
     //     ////////////////    PERIPHERAL BUS HANDLER     ////////////////     //
-    _port = _ddr = _pin = nullptr;
-    _ce = _clk = _io = 0;
     //     /////////////////     CONTROL AND STATUS     /////////////////     //
     this->_countingHalted               = false;
     this->_initialized                  = false;
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return;
 }
 
@@ -530,12 +536,12 @@ bool_t Ds1302::_isInitialized(void)
     // CHECK FOR ERROR - peripheral not initialized
     if(!this->_initialized) {
         // Returns error
-        this->_lastError = Error::NOT_INITIALIZED;
+        this->_lastError = {Error::NOT_INITIALIZED, DiagnosticStage::NONE, 0};
         return false;
     }
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -546,25 +552,25 @@ bool_t Ds1302::_isValidDate(uint16_t year_p, uint8_t month_p, uint8_t monthDay_p
     if((year_p < 2000) || (year_p > 2099) || (month_p < 1) || (month_p > 12) ||
             (monthDay_p < 1) || (monthDay_p > 31)) {
         // Returns error
-        this->_lastError = Error::DATE_INVALID;
+        this->_lastError = {Error::DATE_INVALID, DiagnosticStage::NONE, 0};
         return false;
     }
     if(month_p == 2) {
         if(monthDay_p > ((year_p % 4 == 0) ? 29 : 28)) {
             // Returns error
-            this->_lastError = Error::DATE_INVALID;
+            this->_lastError = {Error::DATE_INVALID, DiagnosticStage::NONE, 0};
             return false;
         }
     } else if((month_p == 4) || (month_p == 6) || (month_p == 9) || (month_p == 11)) {
         if(monthDay_p > 30) {
             // Returns error
-            this->_lastError = Error::DATE_INVALID;
+            this->_lastError = {Error::DATE_INVALID, DiagnosticStage::NONE, 0};
             return false;
         }
     }
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -591,7 +597,7 @@ bool_t Ds1302::_encodeDate(uint8_t *buffer_p, uint16_t year_p, uint8_t month_p, 
     buffer_p[3] = ((year_p / 10) << 4) | (year_p % 10);
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -610,7 +616,7 @@ bool_t Ds1302::_decodeDate(const uint8_t *buffer_p, uint16_t *year_p, uint8_t *m
             ((buffer_p[0] & 0x0F) > 9) || ((buffer_p[1] & 0x0F) > 9) ||
             ((buffer_p[3] & 0x0F) > 9) || ((buffer_p[3] >> 4) > 9)) {
         // Returns error
-        this->_lastError = Error::DATE_INVALID;
+        this->_lastError = {Error::DATE_INVALID, DiagnosticStage::NONE, 0};
         return false;
     }
 
@@ -636,7 +642,7 @@ bool_t Ds1302::_decodeDate(const uint8_t *buffer_p, uint16_t *year_p, uint8_t *m
     }
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -649,7 +655,7 @@ bool_t Ds1302::_encodeTime(uint8_t *buffer_p, uint8_t hours_p, uint8_t minutes_p
             ((timeFormat_p == TimeFormat::FORMAT_12_HOURS) && ((hours_p == 0) || (hours_p > 12))) ||
             ((timeFormat_p == TimeFormat::FORMAT_24_HOURS) && (hours_p > 23))) {
         // Returns error
-        this->_lastError = Error::TIME_INVALID;
+        this->_lastError = {Error::TIME_INVALID, DiagnosticStage::NONE, 0};
         return false;
     }
 
@@ -664,7 +670,7 @@ bool_t Ds1302::_encodeTime(uint8_t *buffer_p, uint8_t hours_p, uint8_t minutes_p
     }
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -684,7 +690,7 @@ bool_t Ds1302::_decodeTime(const uint8_t *buffer_p, uint8_t *hours_p, uint8_t *m
             ((buffer_p[0] & 0x0F) > 9) || ((buffer_p[1] & 0x0F) > 9) ||
             ((buffer_p[2] & 0x0F) > 9)) {
         // Returns error
-        this->_lastError = Error::TIME_INVALID;
+        this->_lastError = {Error::TIME_INVALID, DiagnosticStage::NONE, 0};
         return false;
     }
 
@@ -706,7 +712,7 @@ bool_t Ds1302::_decodeTime(const uint8_t *buffer_p, uint8_t *hours_p, uint8_t *m
             ((auxTimeFormat == TimeFormat::FORMAT_12_HOURS) && ((auxHours == 0) || (auxHours > 12))) ||
             ((auxTimeFormat == TimeFormat::FORMAT_24_HOURS) && (auxHours > 23))) {
         // Returns error
-        this->_lastError = Error::TIME_INVALID;
+        this->_lastError = {Error::TIME_INVALID, DiagnosticStage::NONE, 0};
         return false;
     }
 
@@ -742,7 +748,7 @@ bool_t Ds1302::_decodeTime(const uint8_t *buffer_p, uint8_t *hours_p, uint8_t *m
     }
 
     // Returns successfully
-    this->_lastError = Error::NONE;
+    this->_lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -756,7 +762,7 @@ bool_t Ds1302::_setCounting(bool_t counting_p)
         if (!_writeChecked(0x80, &value, 1)) return false;
     }
     _countingHalted = !counting_p;
-    _lastError = Error::NONE;
+    _lastError = {Error::NONE, DiagnosticStage::NONE, 0};
     return true;
 }
 
@@ -791,32 +797,40 @@ bool_t Ds1302::_setCounting(bool_t counting_p)
 // DS1302 three-wire transport. Calls must be serialized in the main loop.
 void Ds1302::_begin()
 {
-    *_port &= ~(_ce | _clk | _io);
-    *_ddr |= _io;
+    _ce.low();
+    _clk.low();
+    _io.low();
+    _io.setMode(PinMode::OUTPUT_PUSH_PULL);
     _delay_us(10);
-    *_port |= _ce;
+    _ce.high();
     _delay_us(10);
 }
 
 void Ds1302::_end()
 {
     _delay_us(10);
-    *_port &= ~_ce;
-    *_ddr &= ~_io;
-    *_port &= ~(_io | _clk);
+    _ce.low();
+    _io.setMode(PinMode::INPUT_FLOATING);
+    _clk.low();
     _delay_us(10);
 }
 
 void Ds1302::_send(uint8_t value, bool release)
 {
     for (uint8_t i = 0; i < 8; ++i) {
-        if (value & 1) *_port |= _io; else *_port &= ~_io;
+        if (value & 1) {
+            _io.high();
+        } else {
+            _io.low();
+        }
         _delay_us(10);
-        *_port |= _clk;
+        _clk.high();
         _delay_us(10);
         // First read bit appears on the falling edge of command bit 7.
-        if (release && i == 7) { *_ddr &= ~_io; *_port &= ~_io; }
-        *_port &= ~_clk;
+        if (release && i == 7) {
+            _io.setMode(PinMode::INPUT_FLOATING);
+        }
+        _clk.low();
         _delay_us(10);
         value >>= 1;
     }
@@ -826,10 +840,10 @@ uint8_t Ds1302::_receive()
 {
     uint8_t value = 0;
     for (uint8_t i = 0; i < 8; ++i) {
-        if (*_pin & _io) value |= 1U << i;
-        *_port |= _clk;
+        if (_io.read()) value |= 1U << i;
+        _clk.high();
         _delay_us(10);
-        *_port &= ~_clk;
+        _clk.low();
         _delay_us(10);
     }
     return value;
@@ -854,7 +868,10 @@ void Ds1302::_write(uint8_t command, const uint8_t *buffer, uint8_t size)
 bool_t Ds1302::_readClock(uint8_t *buffer)
 {
     _read(0xBE, buffer, 8);
-    if (buffer[7] & 0x7F) { _lastError = Error::COMMUNICATION_FAILED; return false; }
+    if (buffer[7] & 0x7F) {
+        _lastError = {Error::COMMUNICATION_FAILED, DiagnosticStage::CLOCK_READ, buffer[7]};
+        return false;
+    }
     return true;
 }
 
@@ -864,11 +881,10 @@ bool_t Ds1302::_writeChecked(uint8_t command, const uint8_t *buffer, uint8_t siz
     _read(0x8E, &wp, 1);
     _write(0x8E, &zero, 1);
     _read(0x8E, &check, 1);
-    diagnosticStage = 3; diagnosticValue = check;
     if (check != 0) {
         wp &= 0x80;
         _write(0x8E, &wp, 1);
-        _lastError = Error::COMMUNICATION_FAILED;
+        _lastError = {Error::COMMUNICATION_FAILED, DiagnosticStage::WRITE_PROTECTION_DISABLE, check};
         return false;
     }
     if (command == 0xBE) {
@@ -880,20 +896,21 @@ bool_t Ds1302::_writeChecked(uint8_t command, const uint8_t *buffer, uint8_t siz
         for (uint8_t i = 0; i < size; ++i) _write(command + 2*i, buffer+i, 1);
     }
     // Verify writes immediately; a clock rollover during verification can cause failure.
-    bool ok = true;
+    ErrorInfo verification = {Error::NONE, DiagnosticStage::NONE, 0};
     for (uint8_t i = 0; i < size; ++i) {
         uint8_t reg = (command == 0xBE ? 0x80 : command) + 2*i;
         _read(reg, &check, 1);
-        if (check != buffer[i]) { diagnosticStage = 4; diagnosticValue = check; }
-        if (reg == 0x80) {
-            if (check != buffer[i]) ok = false;
-        } else if (check != buffer[i]) ok = false;
+        if (check != buffer[i]) {
+            verification = {Error::COMMUNICATION_FAILED, DiagnosticStage::WRITE_VERIFY, check};
+        }
     }
     wp &= 0x80;
     _write(0x8E, &wp, 1);
     _read(0x8E, &check, 1);
-    if (check != wp) { diagnosticStage = 5; diagnosticValue = check; }
-    if (!ok || check != wp) { _lastError = Error::COMMUNICATION_FAILED; return false; }
-    _lastError = Error::NONE;
-    return true;
+    if (check != wp) {
+        _lastError = {Error::COMMUNICATION_FAILED, DiagnosticStage::WRITE_PROTECTION_RESTORE, check};
+        return false;
+    }
+    _lastError = verification;
+    return verification.code == Error::NONE;
 }

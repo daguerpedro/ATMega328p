@@ -18,19 +18,21 @@ public:
 
     void startDevices();
     void startPeripherals();
-    void drawScreen();
-
-    void checkFlags();
+    void run();
 
     inline void requestRTC() { m_fRequestRTC = true; }
     inline void requestSample() { m_fRequestSample = true; };
     inline void requestEncoder() { encoder.update(); };
-
+    inline void sampleEncoderKey() { encoder.sampleKey(); }
 private:
     void sampleRoutine();
     void inputRoutine();
     void rtcRoutine();
-    
+    void drawScreen();
+    void drawSensors();
+    void drawConfig();
+    void checkFlags();
+
     System() : rtc(), dht11(), encoder() {};
     ~System() = default;
 
@@ -40,6 +42,13 @@ private:
         uint8_t min;
         uint8_t sec;
     };
+
+    bool encoderReady = false;
+    bool rtcRunning = false;
+    bool rtcTimeValid = false;
+
+    DHT11::Result dhtInitResult = DHT11::Result::NotInitialized;
+    DHT11::Result dhtSampleResult = DHT11::Result::NotInitialized;
 
     RTCData rtcBuffer{};
     DHT11::Data dhtBuffer{};
@@ -51,18 +60,19 @@ private:
 
     volatile bool m_fRequestRTC = false;
     volatile bool m_fRequestSample = false;
-    volatile bool m_updateScreen = false;
+    bool m_updateScreen = false;
 
-    volatile bool sampleRequested = false;
-    volatile bool rtcRequested = false;
+    bool sampleRequested = false;
+    bool rtcRequested = false;
 
     enum SCREEN : uint8_t
     {
         SENSORS,
-        TIME,
         CONFIG
     };
 
     SCREEN activeScreen = SCREEN::SENSORS;
-    SCREEN targetScreen = SCREEN::SENSORS;
+
+    bool configUnitSelected = true;
+    bool fahrenheit = false;
 };

@@ -22,7 +22,7 @@
 
 //     /////////////////    GLOBAL DEFINITIONS FILE     /////////////////     //
 
-#include "../funsape/globalDefines.hpp"
+#include "../funsape/peripheral/gpioPin.hpp"
 
 //     ///////////////////     STANDARD C LIBRARY     ///////////////////     //
 
@@ -77,14 +77,23 @@ class Ds1302
 public:
 
     // Initialization diagnostics: stage and last raw register value.
-    uint8_t diagnosticStage = 0;
-    uint8_t diagnosticValue = 0;
-
     enum class Error : uint8_t {
         NONE, NOT_INITIALIZED, ARGUMENT_POINTER_NULL,
         ARGUMENT_VALUE_INVALID, ARGUMENT_CANNOT_BE_ZERO,
         BUFFER_SIZE_TOO_LARGE, DATE_INVALID, TIME_INVALID,
         COMMUNICATION_FAILED
+    };
+
+    enum class DiagnosticStage : uint8_t {
+        NONE, INITIAL_CONTROL_READ, WRITE_PROTECTION_TEST,
+        WRITE_PROTECTION_DISABLE, WRITE_VERIFY, WRITE_PROTECTION_RESTORE,
+        CLOCK_READ
+    };
+
+    struct ErrorInfo {
+        Error code;
+        DiagnosticStage stage;
+        uint8_t value;
     };
 
     //     //////////////////////    TIME FORMAT     //////////////////////     //
@@ -201,11 +210,11 @@ public:
             void
     );
     
-    const char* ErrorString(Error err);
+    ErrorInfo getLastErrorInfo() const;
+    static const char* ErrorString(Error err);
     
     // All three pins must be on the same GPIO port.
-    bool_t init(volatile uint8_t &port_p, volatile uint8_t &ddr_p,
-            volatile uint8_t &pin_p, uint8_t ce_p, uint8_t clk_p, uint8_t io_p);
+    bool_t init(ioRegAddress_t port_p, PinIndex ce_p, PinIndex clk_p, PinIndex io_p);
     Ds1302(const Ds1302 &) = delete;
     Ds1302 &operator=(const Ds1302 &) = delete;
 
@@ -454,8 +463,7 @@ private:
 
     //     /////////////////     DEVICE BUS HANDLER     /////////////////     //
 
-    volatile uint8_t *_port, *_ddr, *_pin;
-    uint8_t _ce, _clk, _io;
+    GpioPin _ce, _clk, _io;
     void _begin();
     void _end();
     void _send(uint8_t value, bool release = false);
@@ -469,7 +477,7 @@ private:
 
     bool_t          _countingHalted             : 1;
     bool_t          _initialized                : 1;
-    Error           _lastError;
+    ErrorInfo       _lastError;
 
 protected:
 
