@@ -4,10 +4,12 @@
 
 int main()
 {
+    cli();
+    
     System& sys = System::getInstance();
     
-    sys.startPeripherals();
     sys.startDevices();
+    sys.startPeripherals();
 
     sei();
 

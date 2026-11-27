@@ -2,6 +2,7 @@
 
 #include "funsape/globalDefines.hpp"
 #include "funsape/peripheral/timer1.hpp"
+#include "funsape/peripheral/timer0.hpp"
 #include "funsape/peripheral/gpioPin.hpp"
 #include "funsape/peripheral/pcint0.hpp"
 
@@ -40,14 +41,19 @@ void System::startDevices()
     {
         ssd1306_print(rtc.ErrorString(rtc.getLastError()));
         ssd1306_print(" ]\n");
-        delayMs(10000);
+        delayMs(5000);
     }
     ssd1306_print("OK ]\n");
 
     rtc.clockStart();
+    rtc.getTime(
+        &rtcBuffer.hora,
+        &rtcBuffer.min,
+        &rtcBuffer.sec
+    );
 
     activeScreen = SCREEN::SENSORS;
-    screen = SCREEN::CONFIG;
+    targetScreen = SCREEN::SENSORS;
 
     ssd1306_clearScreen();
 }
@@ -56,72 +62,121 @@ void System::startPeripherals()
 {
     timer1.init(Timer1::Mode::CTC_OCRA, Timer1::ClockSource::PRESCALER_1024);
     timer1.setCompareAValue(31249); // 2 Sec
+    timer1.setCompareBValue(15624); // 1 Sec
     timer1.activateCompareAInterrupt();
+    timer1.activateCompareBInterrupt();
 
     pcint0.init(Pcint0::Pin::PIN_PCINT0 | Pcint0::Pin::PIN_PCINT1 | Pcint0::Pin::PIN_PCINT2);
     pcint0.activateInterrupt();
 }
 
-void System::sampleRoutine()
+void System::checkFlags()
 {
-    bool sampleRequested;
-
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
         sampleRequested = m_fRequestSample;
-        m_fRequestSample = false;
-    }
+        rtcRequested = m_fRequestRTC;
 
+        m_fRequestSample = false;
+        m_fRequestRTC = false;
+    }
+};
+
+void System::sampleRoutine()
+{
     if (sampleRequested)
     {
         DHT11::Result res = dht11.read(dhtBuffer);
-
         if (res != DHT11::Result::OK)
             ssd1306_printFixed(0, 20, "Status: ERROR", STYLE_NORMAL);
+        
+        if(activeScreen == SCREEN::SENSORS)
+            m_updateScreen = true;
     }
 }
 
-void System::drawScreen()
+void System::rtcRoutine()
 {
-    sampleRoutine();
-/*
+    if(rtcRequested)
+    {        
+        rtc.getTime(
+            &rtcBuffer.hora,
+            &rtcBuffer.min,
+            &rtcBuffer.sec
+        );
+
+        if(activeScreen == SCREEN::TIME)
+            m_updateScreen = true;
+    }
+}
+
+void System::inputRoutine()
+{
     Encoder::InputAction act = encoder.getInputAction();
 
     switch (act.rotAction)
     {
     case Encoder::RotEvent::CLOCKWISE:
-        screen = static_cast<SCREEN>((static_cast<uint8_t>(activeScreen) + 1));
+        targetScreen = static_cast<SCREEN>((static_cast<uint8_t>(activeScreen) + 1));
         break;
     case Encoder::RotEvent::COUNTERCLOCK:
-        screen =  static_cast<SCREEN>((static_cast<uint8_t>(activeScreen) - 1));
+        targetScreen = static_cast<SCREEN>((static_cast<uint8_t>(activeScreen) - 1));
         break;
     default:
         break;
     }
 
- 
-    if ((uint8_t)screen < 0)
-        screen = (SCREEN)2;
+    if (targetScreen > SCREEN::CONFIG)
+        targetScreen = SCREEN::SENSORS;
 
-    if ((uint8_t)screen > 2)
-        screen = (SCREEN)0;
-
-    if (screen != activeScreen)
+    if (targetScreen != activeScreen)
     {
-        activeScreen = screen;
+        activeScreen = targetScreen;
         ssd1306_clearScreen();
-        ssd1306_clearBlock(0,0, UINT8_MAX, UINT8_MAX);
-
-        snprintf(displayBuffer, sizeof(displayBuffer), "SC: %u", (uint8_t)activeScreen);
+        m_updateScreen = true;
     }
+}
 
-    switch (activeScreen)
+void System::drawScreen()
+{
+    while (1)
     {
-    default:
-        break;
+        checkFlags();
+        sampleRoutine();
+        inputRoutine();
+        rtcRoutine();
+        
+        if (m_updateScreen)
+        {
+            m_updateScreen = false;
+
+            // ssd1306_clearScreen();
+
+            switch (activeScreen)
+            {
+            case SCREEN::SENSORS:
+                ssd1306_setCursor(0, 8);
+                snprintf(displayBuffer, sizeof(displayBuffer), "Temp: %u.%u *C", dhtBuffer.temperature, dhtBuffer.temperatureDecimal);
+                ssd1306_print(displayBuffer);
+                break;
+            case SCREEN::TIME:
+                ssd1306_setCursor(0, 8);
+                snprintf(displayBuffer, sizeof(displayBuffer), "Horario: %0u:%0u:%0u", rtcBuffer.hora, rtcBuffer.min, rtcBuffer.sec);
+                ssd1306_print(displayBuffer);
+                break;
+            case SCREEN::CONFIG:
+                break;
+
+            default:
+                break;
+            }
+        }
     }
-*/
-    ssd1306_printFixed(0, 0, displayBuffer, STYLE_NORMAL);
+}
+
+void timer1CompareBCallback()
+{
+    System::getInstance().requestRTC();
 }
 
 void timer1CompareACallback()

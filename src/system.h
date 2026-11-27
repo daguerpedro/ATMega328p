@@ -20,30 +20,49 @@ public:
     void startPeripherals();
     void drawScreen();
 
+    void checkFlags();
+
+    inline void requestRTC() { m_fRequestRTC = true; }
     inline void requestSample() { m_fRequestSample = true; };
     inline void requestEncoder() { encoder.update(); };
 
 private:
     void sampleRoutine();
-
-    System() = default;
+    void inputRoutine();
+    void rtcRoutine();
+    
+    System() : rtc(), dht11(), encoder() {};
     ~System() = default;
 
-    DHT11::Data dhtBuffer;
-    char displayBuffer[128];
+    struct RTCData
+    {
+        uint8_t hora;
+        uint8_t min;
+        uint8_t sec;
+    };
+
+    RTCData rtcBuffer{};
+    DHT11::Data dhtBuffer{};
+    char displayBuffer[64]{};
 
     Ds1302 rtc;
     DHT11 dht11;
     Encoder encoder;
 
+    volatile bool m_fRequestRTC = false;
     volatile bool m_fRequestSample = false;
+    volatile bool m_updateScreen = false;
+
+    volatile bool sampleRequested = false;
+    volatile bool rtcRequested = false;
 
     enum SCREEN : uint8_t
     {
         SENSORS,
+        TIME,
         CONFIG
     };
 
-    SCREEN activeScreen;
-    SCREEN screen;
+    SCREEN activeScreen = SCREEN::SENSORS;
+    SCREEN targetScreen = SCREEN::SENSORS;
 };
