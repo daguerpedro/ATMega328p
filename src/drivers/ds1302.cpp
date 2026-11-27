@@ -106,6 +106,24 @@ Ds1302::Error Ds1302::getLastError(void)
     return this->_lastError;
 }
 
+const char* Ds1302::ErrorString(Error err)
+{
+    switch (err)
+    {
+        case Error::NONE:                    return "Sem Erro";
+        case Error::NOT_INITIALIZED:         return "Não Iniciado";
+        case Error::ARGUMENT_POINTER_NULL:   return "Ponteiro Nulo";
+        case Error::ARGUMENT_VALUE_INVALID:  return "Valor de Argumento Inválido";
+        case Error::ARGUMENT_CANNOT_BE_ZERO: return "Argumento Não Pode Ser Zero";
+        case Error::BUFFER_SIZE_TOO_LARGE:   return "Tamanho do Buffer Muito Grande";
+        case Error::DATE_INVALID:            return "Data Inválida";
+        case Error::TIME_INVALID:            return "Hora Inválida";
+        case Error::COMMUNICATION_FAILED:    return "Falha de Comunicação";
+    }
+
+    return "Erro Desconhecido";
+}
+
 bool_t Ds1302::init(volatile uint8_t &port_p, volatile uint8_t &ddr_p,
         volatile uint8_t &pin_p, uint8_t ce_p, uint8_t clk_p, uint8_t io_p)
 {

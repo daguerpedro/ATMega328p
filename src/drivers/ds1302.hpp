@@ -200,7 +200,9 @@ public:
     Error getLastError(
             void
     );
-
+    
+    const char* ErrorString(Error err);
+    
     // All three pins must be on the same GPIO port.
     bool_t init(volatile uint8_t &port_p, volatile uint8_t &ddr_p,
             volatile uint8_t &pin_p, uint8_t ce_p, uint8_t clk_p, uint8_t io_p);

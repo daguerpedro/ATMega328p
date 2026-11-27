@@ -25,6 +25,21 @@ public:
         ChecksumError
     };
 
+    const char* ResultString(Result res)
+    {
+        switch (res)
+        {
+            case Result::OK:             return "Ok";
+            case Result::Invalid:        return "Invalido";
+            case Result::NotInitialized: return "Não Iniciado";
+            case Result::NoResponse:     return "Sem Resposta";
+            case Result::TimeOut:        return "TimeOut";
+            case Result::ChecksumError:  return "Checksum";
+        }
+        
+        return "Desconhecido"; 
+    }
+
     struct Data
     {
         uint8_t humidity;
@@ -132,39 +147,39 @@ public:
     }
 
 private:
-    volatile uint8_t *m_port = nullptr;
-    volatile uint8_t *m_ddr = nullptr;
-    volatile uint8_t *m_pin = nullptr;
+                volatile uint8_t *m_port = nullptr;
+                volatile uint8_t *m_ddr = nullptr;
+                volatile uint8_t *m_pin = nullptr;
 
-    uint8_t m_pinIndex = 0;
+                uint8_t m_pinIndex = 0;
 
-    inline void m_setBit(volatile uint8_t &REG, uint8_t BIT)
-    {
-        REG |= (1U << BIT);
-    }
+                inline void m_setBit(volatile uint8_t &REG, uint8_t BIT)
+                {
+                    REG |= (1U << BIT);
+                }
 
-    inline void m_clearBit(volatile uint8_t &REG, uint8_t BIT)
-    {
-        REG &= ~(1U << BIT);
-    }
+                inline void m_clearBit(volatile uint8_t &REG, uint8_t BIT)
+                {
+                    REG &= ~(1U << BIT);
+                }
 
-    inline bool m_isBitSet(volatile uint8_t &REG, uint8_t BIT)
-    {
-        return ((REG & (1U << BIT)) != 0);
-    }
+                inline bool m_isBitSet(volatile uint8_t &REG, uint8_t BIT)
+                {
+                    return ((REG & (1U << BIT)) != 0);
+                }
 
-    inline bool waitLevel(bool high)
-    {
-        uint8_t timeout = 120;
+                inline bool waitLevel(bool high)
+                {
+                    uint8_t timeout = 120;
 
-        while (m_isBitSet(*m_pin, m_pinIndex) != high)
-        {
-            if (--timeout == 0)
-                return false;
+                    while (m_isBitSet(*m_pin, m_pinIndex) != high)
+                    {
+                        if (--timeout == 0)
+                            return false;
 
-            _delay_us(1);
-        }
+                        _delay_us(1);
+                    }
 
-        return true;
-    }
-};
+                    return true;
+                }
+            };
